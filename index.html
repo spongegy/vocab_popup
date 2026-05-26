@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>어휘 도우미 리더</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Noto Serif KR', 'Nanum Myeongjo', Georgia, serif; background: #faf8f4; color: #2c2a24; min-height: 100vh; }
+
+  .app-header { background: #2c2a24; color: #faf8f4; padding: 14px 28px; display: flex; align-items: center; border-bottom: 2px solid #8b6914; gap: 16px; }
+  .app-title { font-family: 'Noto Sans KR', sans-serif; font-size: 16px; font-weight: 500; letter-spacing: 0.05em; }
+  .app-subtitle { font-size: 11px; color: #b0a88a; margin-top: 2px; font-family: 'Noto Sans KR', sans-serif; }
+  .server-badge { font-family: 'Noto Sans KR', sans-serif; font-size: 10px; padding: 3px 10px; border-radius: 20px; margin-left: auto; white-space: nowrap; }
+  .badge-ok  { background: rgba(91,158,106,0.25);  color: #7dcc90; border: 1px solid rgba(91,158,106,0.4); }
+  .badge-err { background: rgba(192,57,43,0.25);   color: #f07060; border: 1px solid rgba(192,57,43,0.4); }
+  .badge-chk { background: rgba(200,180,100,0.2);  color: #d4b060; border: 1px solid rgba(200,180,100,0.3); }
+
+  .tab-bar { display: flex; background: #2c2a24; padding: 0 28px; }
+  .tab { font-family: 'Noto Sans KR', sans-serif; font-size: 12px; padding: 8px 18px; cursor: pointer; color: #888; border-bottom: 2px solid transparent; transition: all 0.2s; }
+  .tab.active { color: #f0c040; border-bottom-color: #f0c040; }
+  .tab:hover:not(.active) { color: #ccc; }
+
+  .app-body { display: flex; height: calc(100vh - 88px); }
+
+  .sidebar { width: 225px; min-width: 225px; background: #f0ece2; border-right: 1px solid #d8d0be; padding: 16px 14px; display: flex; flex-direction: column; gap: 14px; overflow-y: auto; }
+  .sidebar-section-title { font-family: 'Noto Sans KR', sans-serif; font-size: 10px; font-weight: 500; color: #8a8070; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 6px; }
+
+  .upload-zone { border: 1.5px dashed #b8a87a; border-radius: 8px; padding: 14px 10px; text-align: center; cursor: pointer; transition: all 0.2s; background: #faf8f0; }
+  .upload-zone:hover { border-color: #8b6914; background: #f5f0e0; }
+  .upload-icon { font-size: 20px; color: #b8a87a; margin-bottom: 4px; }
+  .upload-text { font-family: 'Noto Sans KR', sans-serif; font-size: 11px; color: #8a8070; line-height: 1.5; }
+  .upload-text strong { color: #5a4a20; }
+  #fileInput { display: none; }
+
+  .grade-legend { display: flex; flex-direction: column; gap: 5px; }
+  .grade-item { display: flex; align-items: center; gap: 8px; font-family: 'Noto Sans KR', sans-serif; font-size: 11px; color: #5a5040; }
+  .grade-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .dot-a { background: #5b9e6a; } .dot-b { background: #d48b2a; } .dot-c { background: #c0392b; }
+  .dot-unknown { background: #bbb; }
+
+  .stats-box { background: #2c2a24; border-radius: 8px; padding: 12px 14px; }
+  .stat-item { display: flex; justify-content: space-between; font-family: 'Noto Sans KR', sans-serif; font-size: 11px; padding: 3px 0; }
+  .stat-label { color: #a09880; } .stat-val { color: #f0c040; font-weight: 500; }
+
+  .how-to { background: #e8e0ce; border-radius: 8px; padding: 10px 12px; }
+  .how-item { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 7px; font-family: 'Noto Sans KR', sans-serif; font-size: 10.5px; color: #5a5040; line-height: 1.5; }
+  .how-item:last-child { margin-bottom: 0; }
+  .how-num { background: #8b6914; color: white; border-radius: 50%; width: 16px; height: 16px; display: flex; align-items: center; justify-content: center; font-size: 9px; flex-shrink: 0; margin-top: 1px; }
+
+  .reader-pane { flex: 1; overflow-y: auto; padding: 40px 60px; }
+  #textInput { width: 100%; min-height: 140px; padding: 14px 16px; border: 1px solid #d8d0be; border-radius: 8px; font-family: 'Noto Serif KR', Georgia, serif; font-size: 16px; line-height: 1.9; background: #fdf9f0; color: #2c2a24; resize: vertical; margin-bottom: 12px; outline: none; }
+  #textInput:focus { border-color: #8b6914; box-shadow: 0 0 0 3px rgba(139,105,20,0.1); }
+  .btn-analyze { font-family: 'Noto Sans KR', sans-serif; font-size: 13px; font-weight: 500; background: #2c2a24; color: #f0c040; border: none; border-radius: 6px; padding: 10px 22px; cursor: pointer; transition: all 0.2s; margin-bottom: 20px; }
+  .btn-analyze:hover { background: #3e3a30; }
+  .hint { font-family: 'Noto Sans KR', sans-serif; font-size: 11px; color: #b0a88a; line-height: 1.7; }
+
+  .reading-text { font-size: 17px; line-height: 2.1; color: #2c2a24; max-width: 720px; margin: 0 auto; word-break: keep-all; }
+  .word-token { cursor: pointer; border-radius: 2px; transition: background 0.15s; display: inline; padding: 1px 0; }
+  .word-token:hover { background: rgba(139,105,20,0.12); }
+  .word-token.grade-초급  { border-bottom: 1.5px solid rgba(91,158,106,0.7); }
+  .word-token.grade-중급  { border-bottom: 1.5px solid rgba(212,139,42,0.7); }
+  .word-token.grade-고급  { border-bottom: 1.5px solid rgba(192,57,43,0.85); }
+  .word-token.grade-loading { border-bottom: 1.5px dotted #ccc; }
+  .word-token.highlighted { background: rgba(240,192,64,0.3) !important; }
+  .josa-part { display: inline; color: #7a7060; }
+
+  #wordPopup { display: none; position: fixed; z-index: 9999; background: #2c2a24; color: #faf8f4; border-radius: 10px; padding: 16px 20px; min-width: 260px; max-width: 340px; box-shadow: 0 8px 32px rgba(0,0,0,0.4); border: 1px solid #4a4030; font-family: 'Noto Sans KR', sans-serif; }
+  .popup-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+  .popup-word { font-size: 22px; font-weight: 500; font-family: 'Noto Serif KR', serif; color: #f0c040; }
+  .popup-grade-badge { font-size: 10px; padding: 3px 8px; border-radius: 12px; font-weight: 500; }
+  .badge-초급 { background: rgba(91,158,106,0.2); color: #7dcc90; border: 1px solid rgba(91,158,106,0.4); }
+  .badge-중급 { background: rgba(212,139,42,0.2); color: #f0a840; border: 1px solid rgba(212,139,42,0.4); }
+  .badge-고급 { background: rgba(192,57,43,0.2); color: #f07060; border: 1px solid rgba(192,57,43,0.4); }
+  .badge-unknown { background: rgba(150,150,150,0.15); color: #bbb; border: 1px solid rgba(150,150,150,0.3); }
+  .badge-loading { background: rgba(150,150,150,0.1); color: #888; border: 1px solid rgba(150,150,150,0.2); }
+  .popup-pos { font-size: 11px; color: #8a8070; margin-bottom: 8px; }
+  .popup-body { border-top: 1px solid #4a4030; padding-top: 10px; }
+  .sense-item { margin-bottom: 10px; }
+  .sense-item:last-child { margin-bottom: 0; }
+  .sense-num { font-size: 10px; color: #6a6050; margin-bottom: 2px; }
+  .sense-def { font-size: 13px; line-height: 1.7; color: #e0d8c8; }
+  .sense-ex { font-size: 11.5px; color: #a09880; margin-top: 5px; font-style: italic; line-height: 1.6; }
+  .sense-ex::before { content: '예) '; color: #6a6050; font-style: normal; }
+  .popup-close { background: none; border: none; color: #6a6050; cursor: pointer; font-size: 16px; padding: 0; transition: color 0.15s; line-height: 1; }
+  .popup-close:hover { color: #f0c040; }
+
+  .grade-toggle-bar { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; font-family: 'Noto Sans KR', sans-serif; }
+  .grade-toggle { display: flex; align-items: center; gap: 5px; font-size: 11px; cursor: pointer; padding: 5px 10px; border-radius: 20px; border: 1px solid #d8d0be; background: white; transition: all 0.2s; user-select: none; color: #5a5040; }
+  .grade-toggle.on-초급 { background: rgba(91,158,106,0.15); border-color: #5b9e6a; color: #3a7a4a; }
+  .grade-toggle.on-중급 { background: rgba(212,139,42,0.15); border-color: #d48b2a; color: #8a5010; }
+  .grade-toggle.on-고급 { background: rgba(192,57,43,0.15); border-color: #c0392b; color: #901a10; }
+  .grade-dot-sm { width: 8px; height: 8px; border-radius: 50%; }
+
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+  .spinner { display: inline-block; width: 10px; height: 10px; border: 2px solid #5a4a30; border-top-color: #f0c040; border-radius: 50%; animation: spin 0.6s linear infinite; vertical-align: middle; margin-right: 4px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<div class="app-header">
+  <div>
+    <div class="app-title">📖 어휘 도우미 리더</div>
+    <div class="app-subtitle">국립국어원 한국어기초사전 연동</div>
+  </div>
+  <div class="server-badge badge-chk" id="serverBadge">⏳ 연결 확인 중...</div>
+</div>
+
+<div class="tab-bar">
+  <div class="tab active" onclick="switchTab('input')">텍스트 입력</div>
+  <div class="tab" onclick="switchTab('read')">읽기 모드</div>
+</div>
+
+<div class="app-body">
+  <div class="sidebar">
+    <div>
+      <div class="sidebar-section-title">📂 파일 열기</div>
+      <div class="upload-zone" onclick="document.getElementById('fileInput').click()">
+        <div class="upload-icon">📄</div>
+        <div class="upload-text"><strong>PDF / TXT</strong> 파일<br>클릭해서 올려주세요</div>
+      </div>
+      <input type="file" id="fileInput" accept=".pdf,.txt">
+    </div>
+
+    <div>
+      <div class="sidebar-section-title">🎨 등급 표시</div>
+      <div class="grade-legend">
+        <div class="grade-item"><div class="grade-dot dot-a"></div> 초급</div>
+        <div class="grade-item"><div class="grade-dot dot-b"></div> 중급</div>
+        <div class="grade-item"><div class="grade-dot dot-c"></div> 고급</div>
+        <div class="grade-item"><div class="grade-dot dot-unknown"></div> 미분류</div>
+      </div>
+    </div>
+
+    <div>
+      <div class="sidebar-section-title">📊 어휘 통계</div>
+      <div class="stats-box">
+        <div class="stat-item"><span class="stat-label">전체 어절</span><span class="stat-val" id="stat-total">—</span></div>
+        <div class="stat-item"><span class="stat-label">초급</span><span class="stat-val" id="stat-a">—</span></div>
+        <div class="stat-item"><span class="stat-label">중급</span><span class="stat-val" id="stat-b">—</span></div>
+        <div class="stat-item"><span class="stat-label">고급</span><span class="stat-val" id="stat-c">—</span></div>
+      </div>
+    </div>
+
+    <div>
+      <div class="sidebar-section-title">💡 사용 방법</div>
+      <div class="how-to">
+        <div class="how-item"><div class="how-num">1</div>텍스트 붙여넣기 또는 PDF 업로드</div>
+        <div class="how-item"><div class="how-num">2</div>분석 시작 → 읽기 모드</div>
+        <div class="how-item"><div class="how-num">3</div>단어 클릭 → 뜻 팝업</div>
+        <div class="how-item"><div class="how-num">4</div>조사 자동 분리 (돌연사에 → 돌연사+에)</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="reader-pane">
+    <div class="tab-content active" id="tab-input">
+      <textarea id="textInput" placeholder="읽을 글을 여기에 붙여넣어 주세요.
+
+예시) 인공지능은 인간의 지능을 모방하여 학습, 추론, 인식 등의 기능을 수행하는 컴퓨터 시스템이다. 최근 딥러닝 기술의 발전으로 다양한 분야에서 눈부신 성과를 거두고 있다. 돌연사에 이르는 심근경색을 예방하려면 규칙적인 생활습관이 중요하다."></textarea>
+      <button class="btn-analyze" onclick="analyzeText()">✨ 분석 시작 → 읽기 모드</button>
+      <div class="hint">단어 클릭 시 국립국어원 사전에서 실시간으로 뜻을 가져옵니다.<br>조사·어미 자동 분리 (예: <strong>돌연사에</strong> → 돌연사 + 에)</div>
+    </div>
+
+    <div class="tab-content" id="tab-read">
+      <div class="grade-toggle-bar">
+        <div class="grade-toggle on-초급" id="toggle-초급" onclick="toggleGrade('초급')"><div class="grade-dot-sm" style="background:#5b9e6a"></div> 초급</div>
+        <div class="grade-toggle on-중급" id="toggle-중급" onclick="toggleGrade('중급')"><div class="grade-dot-sm" style="background:#d48b2a"></div> 중급</div>
+        <div class="grade-toggle on-고급" id="toggle-고급" onclick="toggleGrade('고급')"><div class="grade-dot-sm" style="background:#c0392b"></div> 고급</div>
+      </div>
+      <div class="reading-text" id="readingText"></div>
+    </div>
+  </div>
+</div>
+
+<div id="wordPopup">
+  <div class="popup-header">
+    <div class="popup-word" id="popupWord"></div>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <span class="popup-grade-badge" id="popupGrade"></span>
+      <button class="popup-close" onclick="closePopup()">✕</button>
+    </div>
+  </div>
+  <div class="popup-pos" id="popupPos"></div>
+  <div class="popup-body" id="popupBody"></div>
+</div>
+
+<script>
+pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+// 로컬이면 localhost:5000, 배포되면 같은 origin 사용
+const SERVER = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
+  ? 'http://localhost:5000'
+  : '';  // Render 배포 시엔 같은 서버에서 API도 서빙
+
+const cache = {};
+
+async function checkServer() {
+  const badge = document.getElementById('serverBadge');
+  try {
+    const res = await fetch(`${SERVER}/api/dict?q=나무`, { signal: AbortSignal.timeout(4000) });
+    if (res.ok) {
+      badge.textContent = '✅ 사전 연결됨';
+      badge.className = 'server-badge badge-ok';
+    } else { throw new Error(); }
+  } catch {
+    badge.textContent = '⚠️ 사전 연결 실패';
+    badge.className = 'server-badge badge-err';
+  }
+}
+checkServer();
+
+async function fetchKrdict(word) {
+  if (cache[word] !== undefined) return cache[word];
+  try {
+    const res = await fetch(`${SERVER}/api/dict?q=${encodeURIComponent(word)}`, { signal: AbortSignal.timeout(7000) });
+    if (!res.ok) { cache[word] = null; return null; }
+    const xmlStr = await res.text();
+    const xml = new DOMParser().parseFromString(xmlStr, 'text/xml');
+    if (xml.querySelector('parsererror')) { cache[word] = null; return null; }
+    const items = xml.querySelectorAll('item');
+    if (!items.length) { cache[word] = null; return null; }
+    const first = items[0];
+    const grade = first.querySelector('word_grade')?.textContent?.trim() || '';
+    const pos   = first.querySelector('pos')?.textContent?.trim() || '';
+    const senses = [];
+    xml.querySelectorAll('sense').forEach(s => {
+      const def = s.querySelector('definition')?.textContent?.trim() || '';
+      const ex  = s.querySelector('example')?.textContent?.trim() || '';
+      if (def) senses.push({ def, ex });
+    });
+    const result = { grade, pos, senses };
+    cache[word] = result;
+    return result;
+  } catch { cache[word] = null; return null; }
+}
+
+const JOSA = [
+  '으로부터는','으로부터도','로부터는','로부터도','으로부터','로부터',
+  '에서부터','에게서','한테서','으로서는','으로서도','로서는','로서도',
+  '으로서','로서','에서는','에서도','에서가','에서만','에게는','에게도',
+  '에게만','한테는','한테도','이라도','라도','이라면','라면','이라고','라고',
+  '이니까','니까','이지만','지만','이므로','므로','으로는','으로도','으로만',
+  '로는','로도','로만','이라는','라는','이란','란',
+  '에서','에게','한테','에는','에도','에만','부터','까지','마다','조차','마저','밖에',
+  '이라','이야','이랑','랑','으로','로','의','과','와','은','는','이','가','을','를',
+  '도','만','에','께','서','야','아',
+];
+const EOMI = [
+  '었습니다','았습니다','겠습니다','습니다','ㅂ니다',
+  '었습니까','았습니까','겠습니까','습니까','ㅂ니까',
+  '었으면','았으면','었지만','았지만','었는데','았는데',
+  '겠지만','겠는데','겠어요','겠어','었어요','았어요','었어','았어',
+  '어요','아요','지요','죠','었다','았다','겠다','는다','ㄴ다',
+  '으면','면','지만','는데','ㄴ데','어서','아서','어도','아도',
+  '으며','며','으니','니','으나','나','어','아','지','고','서',
+];
+function splitStem(w) {
+  for (const j of JOSA) if (w.length > j.length && w.endsWith(j)) return { stem: w.slice(0,-j.length), suffix: j };
+  for (const e of EOMI) if (w.length > e.length && w.endsWith(e)) return { stem: w.slice(0,-e.length), suffix: e };
+  return { stem: w, suffix: '' };
+}
+function tokenize(text) {
+  const parts = []; const re = /([가-힣a-zA-Z0-9]+)|([^가-힣a-zA-Z0-9])/g; let m;
+  while ((m = re.exec(text)) !== null) {
+    if (m[1]) { const { stem, suffix } = splitStem(m[1]); parts.push({ type:'word', word:m[1], stem, suffix }); }
+    else parts.push({ type:'punct', val:m[2] });
+  }
+  return parts;
+}
+
+function switchTab(tab) {
+  document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active',(i===0&&tab==='input')||(i===1&&tab==='read')));
+  document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));
+  document.getElementById('tab-'+tab).classList.add('active');
+}
+
+function analyzeText() {
+  const text = document.getElementById('textInput').value.trim();
+  if (!text) return;
+  renderText(text); switchTab('read');
+}
+
+function renderText(text) {
+  const cont = document.getElementById('readingText'); cont.innerHTML = '';
+  let total=0;
+  tokenize(text).forEach(tok => {
+    if (tok.type==='punct') { cont.appendChild(tok.val==='\n' ? document.createElement('br') : document.createTextNode(tok.val)); return; }
+    total++;
+    const sp = document.createElement('span');
+    sp.className = 'word-token grade-loading'; sp.textContent = tok.stem;
+    sp.dataset.stem = tok.stem;
+    sp.title = tok.suffix ? `어간: ${tok.stem} / 분리: ${tok.suffix}` : tok.stem;
+    sp.onclick = e => { e.stopPropagation(); handleClick(tok.stem, e); };
+    cont.appendChild(sp);
+    if (tok.suffix) { const js=document.createElement('span'); js.className='josa-part'; js.textContent=tok.suffix; cont.appendChild(js); }
+  });
+  document.getElementById('stat-total').textContent = total;
+  ['stat-a','stat-b','stat-c'].forEach(id=>document.getElementById(id).textContent='—');
+  batchGrades(cont);
+}
+
+async function batchGrades(cont) {
+  const spans = [...cont.querySelectorAll('.word-token')];
+  const stems = [...new Set(spans.map(s=>s.dataset.stem).filter(Boolean))];
+  let cA=0,cB=0,cC=0;
+  for (let i=0;i<stems.length;i++) {
+    const stem=stems[i], info=await fetchKrdict(stem);
+    cont.querySelectorAll(`.word-token[data-stem="${CSS.escape(stem)}"]`).forEach(sp=>{
+      sp.classList.remove('grade-loading');
+      sp.classList.add(info?.grade ? 'grade-'+info.grade : 'grade-unknown');
+    });
+    if (info?.grade==='초급') cA++; else if (info?.grade==='중급') cB++; else if (info?.grade==='고급') cC++;
+    if (i%20===19) { document.getElementById('stat-a').textContent=cA; document.getElementById('stat-b').textContent=cB; document.getElementById('stat-c').textContent=cC; await new Promise(r=>setTimeout(r,10)); }
+  }
+  document.getElementById('stat-a').textContent=cA; document.getElementById('stat-b').textContent=cB; document.getElementById('stat-c').textContent=cC;
+}
+
+let curHL=null;
+async function handleClick(stem, e) {
+  if (curHL) curHL.classList.remove('highlighted');
+  curHL=e.target; curHL.classList.add('highlighted');
+  const popup=document.getElementById('wordPopup');
+  document.getElementById('popupWord').textContent=stem;
+  document.getElementById('popupGrade').textContent='조회 중...';
+  document.getElementById('popupGrade').className='popup-grade-badge badge-loading';
+  document.getElementById('popupPos').textContent='';
+  document.getElementById('popupBody').innerHTML='<span class="spinner"></span> 사전 검색 중...';
+  popup.style.display='block'; positionPopup(e);
+  const info=await fetchKrdict(stem);
+  if (info && info.senses?.length) {
+    document.getElementById('popupGrade').textContent=info.grade||'등급 없음';
+    document.getElementById('popupGrade').className='popup-grade-badge badge-'+(info.grade||'unknown');
+    document.getElementById('popupPos').textContent=info.pos;
+    const body=document.getElementById('popupBody'); body.innerHTML='';
+    info.senses.slice(0,3).forEach((s,i)=>{
+      const item=document.createElement('div'); item.className='sense-item';
+      if (info.senses.length>1) { const n=document.createElement('div'); n.className='sense-num'; n.textContent=`${i+1}.`; item.appendChild(n); }
+      const d=document.createElement('div'); d.className='sense-def'; d.textContent=s.def; item.appendChild(d);
+      if (s.ex) { const ex=document.createElement('div'); ex.className='sense-ex'; ex.textContent=s.ex; item.appendChild(ex); }
+      body.appendChild(item);
+    });
+  } else {
+    document.getElementById('popupGrade').textContent='미등록';
+    document.getElementById('popupGrade').className='popup-grade-badge badge-unknown';
+    document.getElementById('popupPos').textContent='';
+    document.getElementById('popupBody').textContent=`"${stem}"은 사전에 등록되지 않은 단어예요.`;
+  }
+  positionPopup(e);
+}
+
+function positionPopup(e) {
+  const popup=document.getElementById('wordPopup');
+  const rect=e.target.getBoundingClientRect();
+  let left=rect.left+window.scrollX, top=rect.bottom+window.scrollY+8;
+  if (left+350>window.innerWidth) left=window.innerWidth-355;
+  if (top+260>window.innerHeight+window.scrollY) top=rect.top+window.scrollY-270;
+  popup.style.left=left+'px'; popup.style.top=top+'px';
+}
+function closePopup() {
+  document.getElementById('wordPopup').style.display='none';
+  if (curHL) { curHL.classList.remove('highlighted'); curHL=null; }
+}
+document.addEventListener('click', e=>{ if (!e.target.closest('#wordPopup')&&!e.target.classList.contains('word-token')) closePopup(); });
+
+const gradeOn={'초급':true,'중급':true,'고급':true};
+function toggleGrade(g) {
+  gradeOn[g]=!gradeOn[g];
+  document.getElementById('toggle-'+g).classList.toggle('on-'+g,gradeOn[g]);
+  document.querySelectorAll('.word-token.grade-'+g).forEach(el=>{ el.style.borderBottom=gradeOn[g]?'':'none'; });
+}
+
+document.getElementById('fileInput').addEventListener('change', async e=>{
+  const file=e.target.files[0]; if (!file) return;
+  if (file.type==='application/pdf') {
+    const reader=new FileReader();
+    reader.onload=async ev=>{
+      const pdf=await pdfjsLib.getDocument(new Uint8Array(ev.target.result)).promise;
+      let text='';
+      for (let i=1;i<=Math.min(pdf.numPages,30);i++) {
+        const page=await pdf.getPage(i), tc=await page.getTextContent();
+        text+=tc.items.map(it=>it.str).join(' ')+'\n\n';
+      }
+      document.getElementById('textInput').value=text.trim(); switchTab('input');
+    };
+    reader.readAsArrayBuffer(file);
+  } else {
+    const reader=new FileReader();
+    reader.onload=ev=>{ document.getElementById('textInput').value=ev.target.result; switchTab('input'); };
+    reader.readAsText(file,'UTF-8');
+  }
+});
+</script>
+</body>
+</html>
