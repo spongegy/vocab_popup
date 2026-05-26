@@ -8,7 +8,7 @@ import urllib.request
 import urllib.parse
 import os
 
-API_KEY = os.environ.get("KRDICT_KEY", "")  # Render 환경변수에서 읽음
+API_KEY = os.environ.get("KRDICT_KEY", "")
 
 class Handler(SimpleHTTPRequestHandler):
     def do_GET(self):
@@ -27,12 +27,20 @@ class Handler(SimpleHTTPRequestHandler):
                 f"&advanced=y&method=exact&type1=word"
             )
             try:
-                with urllib.request.urlopen(api_url, timeout=6) as r:
+                req = urllib.request.Request(
+                    api_url,
+                    headers={
+                        "User-Agent": "Mozilla/5.0",
+                        "Accept": "application/xml, text/xml, */*",
+                    }
+                )
+                with urllib.request.urlopen(req, timeout=10) as r:
                     data = r.read()
                 self._respond(200, data, "application/xml; charset=utf-8")
             except Exception as e:
                 self._respond(500, str(e).encode(), "text/plain")
             return
+        # 정적 파일 서빙
         super().do_GET()
 
     def _respond(self, code, body, ctype):
