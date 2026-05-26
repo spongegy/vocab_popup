@@ -19,12 +19,12 @@ class Handler(SimpleHTTPRequestHandler):
             if not word or not API_KEY:
                 self._respond(400, b"missing query or key", "text/plain")
                 return
+            # advanced 옵션 제거, num=10으로 단순화
             api_url = (
                 f"https://krdict.korean.go.kr/api/search"
                 f"?key={API_KEY}"
                 f"&q={urllib.parse.quote(word)}"
                 f"&sort=popular&start=1&num=10"
-                f"&advanced=y&method=exact&type1=word"
             )
             try:
                 req = urllib.request.Request(
