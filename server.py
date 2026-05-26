@@ -23,7 +23,7 @@ class Handler(SimpleHTTPRequestHandler):
                 f"https://krdict.korean.go.kr/api/search"
                 f"?key={API_KEY}"
                 f"&q={urllib.parse.quote(word)}"
-                f"&sort=popular&start=1&num=3"
+                f"&sort=popular&start=1&num=10"
                 f"&advanced=y&method=exact&type1=word"
             )
             try:
@@ -40,7 +40,6 @@ class Handler(SimpleHTTPRequestHandler):
             except Exception as e:
                 self._respond(500, str(e).encode(), "text/plain")
             return
-        # 정적 파일 서빙
         super().do_GET()
 
     def _respond(self, code, body, ctype):
